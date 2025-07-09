@@ -1,4 +1,4 @@
-package com.migrator.update;
+package com.migrator;
 
 import javax.swing.*;
 import java.awt.*;

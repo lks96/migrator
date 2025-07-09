@@ -1,7 +1,5 @@
 package com.migrator;
 
-import com.migrator.update.TableSelectionDialog;
-
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
@@ -23,26 +21,18 @@ import java.util.regex.PatternSyntaxException;
 
 public class MigrationUI {
     // 新增表名过滤输入框
-    private JTextField tableFilterField;
-
+    private JTextField tableFilterField,
+            oracleHostField, oraclePortField, oracleSIDField, oracleUserField,
+            mysqlUrlField, mysqlUserField,mysqlDbNameField;
+    private JPasswordField oraclePwdField,mysqlPwdField;
     private JComboBox<String> oracleConnectModeBox;
-
-    private JTextField oracleHostField, oraclePortField, oracleSIDField, oracleUserField;
-    private JPasswordField oraclePwdField;
-    private JTextField mysqlUrlField, mysqlUserField;
-    private JPasswordField mysqlPwdField;
     private JTextArea logArea = new JTextArea(20, 40);
-    private JTextField mysqlDbNameField;
     private DefaultTableModel mappingTableModel;
-
     // 新增：其他配置的复选框
-    private JCheckBox dropOldTableCheckBox;
-    private JCheckBox migrateForeignKeysCheckBox;
+    private JCheckBox dropOldTableCheckBox ,migrateForeignKeysCheckBox;
 
     // 新增连接对象成员变量
-    private Connection oracleConn = null;
-    private Connection mysqlConn = null;
-
+    private Connection oracleConn ,mysqlConn;
 
     // 监听配置是否修改
     private boolean oracleChange = false;
@@ -64,7 +54,6 @@ public class MigrationUI {
             log("❌ 配置文件读取失败: " + e.getMessage());
         }
     }
-
 
     // 初始化数据库连接
     private void initializeConnections() {
@@ -116,6 +105,7 @@ public class MigrationUI {
             log("关闭连接时出错: " + ex.getMessage());
         }
     }
+
     public void createAndShowGUI() {
         loadExternalConfig();
         JFrame frame = new JFrame("Oracle → MySQL 表结构迁移工具");
@@ -148,7 +138,6 @@ public class MigrationUI {
         JLabel filterLabel = new JLabel("指定迁移的表名 (多个用逗号分隔):");
         filterLabel.setFont(new Font("微软雅黑", Font.BOLD, 14));
         tableFilterField = new JTextField(50);
-//        tableFilterField.setText("");
         tableFilterField.setFont(new Font("微软雅黑", Font.PLAIN, 14));
         tableFilterField.setToolTipText("例如: EMPLOYEE,DEPARTMENT,PROJECT");
 
@@ -165,7 +154,6 @@ public class MigrationUI {
         configTabbedPane.addTab("Oracle 配置", createOracleDbPanel());
         configTabbedPane.addTab("MySQL 配置", createMySqlDbPanel());
         configTabbedPane.addTab("字段映射配置", createMappingPanel());
-        // 新增一行：添加“其他配置”标签页
         configTabbedPane.addTab("其他配置", createOtherConfigPanel());
 
         // ✅ 所有组件构建完成后再加载配置值
@@ -428,7 +416,7 @@ public class MigrationUI {
         }
     }
 
-
+    // 创建 oracle 配置面板
     private JPanel createOracleDbPanel() {
         JPanel panel = new JPanel();
         panel.setLayout(new GridBagLayout());
@@ -469,6 +457,7 @@ public class MigrationUI {
         return panel;
     }
 
+    // 创建 mysql 配置面板
     private JPanel createMySqlDbPanel() {
         JPanel panel = new JPanel();
         panel.setLayout(new GridBagLayout());
@@ -543,6 +532,7 @@ public class MigrationUI {
         }
         return sb.toString();
     }
+
     // 修改doMigration方法以支持表过滤
     private void doMigration() {
         logArea.append("=====================================================\n");
@@ -847,8 +837,6 @@ public class MigrationUI {
         migrationWorker.execute();
     }
 
-
-
     // 迁移外键约束
     private void migrateForeignKeys(Connection oracleConn, Connection mysqlConn, String tableName) {
         try {
@@ -1052,14 +1040,10 @@ public class MigrationUI {
         return sb.toString();
     }
 
-
     private void log(String msg) {
         logArea.append(msg + "\n");
         logArea.setCaretPosition(logArea.getDocument().getLength());
     }
-
-
-
 
     // 修改测试连接方法，使用已保存的连接
     private void testConnections() {
@@ -1097,7 +1081,6 @@ public class MigrationUI {
         }
     }
 
-
     // 添加配置变更监听器
     private void setupConnectionListeners() {
         // 当Oracle配置变更时重置连接
@@ -1120,7 +1103,6 @@ public class MigrationUI {
     // 重置Oracle连接
     private void resetOracleConnection() {
         try {
-
             // 关闭现有链接
             if (oracleConn != null && !oracleConn.isClosed()) {
                 oracleConn.close();
@@ -1290,4 +1272,3 @@ public class MigrationUI {
                 StandardOpenOption.APPEND);
     }
 }
-
