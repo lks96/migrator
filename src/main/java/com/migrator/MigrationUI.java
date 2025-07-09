@@ -1,5 +1,7 @@
 package com.migrator;
 
+import com.migrator.update.TableSelectionDialog;
+
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
