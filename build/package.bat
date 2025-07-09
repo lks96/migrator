@@ -30,7 +30,7 @@ jpackage ^
     --input "%INPUT_DIR%" ^
     --main-jar migrator-1.0.jar ^
     --main-class com.migrator.Migrator ^
-    --icon "%PROJECT_ROOT%\app\conf\migrator.ico" ^
+    --icon "%PROJECT_ROOT%\build\migrator.ico" ^
     --java-options "-Dfile.encoding=UTF-8" ^
     --dest "%OUTPUT_DIR%" ^
     --win-console
