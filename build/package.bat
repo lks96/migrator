@@ -29,7 +29,7 @@ jpackage ^
     --name migrator ^
     --input "%INPUT_DIR%" ^
     --main-jar migrator-1.0.jar ^
-    --main-class com.migrator.Migrator ^
+    --main-class com.migrator.Main ^
     --icon "%PROJECT_ROOT%\build\migrator.ico" ^
     --java-options "-Dfile.encoding=UTF-8" ^
     --dest "%OUTPUT_DIR%" ^
