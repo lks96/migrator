@@ -16,6 +16,8 @@ import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import javax.swing.Timer;
+import java.util.concurrent.CountDownLatch;
 
 /**
  * 数据库迁移工具的主用户界面。
@@ -41,6 +43,7 @@ public class MigrationUI {
     // --- State Flags ---
     private boolean oracleConfigChanged = false;
     private boolean mysqlConfigChanged = false;
+    private boolean isConnecting = false; // 连接状态标志
 
     /**
  * MigrationUI的构造方法。初始化控制器。
@@ -255,11 +258,20 @@ public class MigrationUI {
     // --- Action & Helper Methods ---
 
     private void initializeConnectionsWithUISettings() {
+        if (isConnecting) {
+            log("连接已在进行中，忽略新请求...");
+            return;
+        }
+        isConnecting = true;
         // 在后台线程中运行连接逻辑，以免冻结UI
         new SwingWorker<Void, Void>() {
             @Override
             protected Void doInBackground() {
                 dbController.closeConnections(); // 首先关闭任何现有连接
+            CountDownLatch latch = new CountDownLatch(2);
+
+            // 并行连接Oracle
+            new Thread(() -> {
                 try {
                     dbController.connectOracle(
                             oracleHostField.getText(), oraclePortField.getText(), oracleSIDField.getText(),
@@ -268,7 +280,13 @@ public class MigrationUI {
                     );
                 } catch (Exception e) {
                     log("❌ Oracle 连接失败: " + e.getMessage());
+                } finally {
+                    latch.countDown();
                 }
+            }).start();
+
+            // 并行连接MySQL
+            new Thread(() -> {
                 try {
                     dbController.connectMySQL(
                             mysqlUrlField.getText(), mysqlDbNameField.getText(),
@@ -276,27 +294,81 @@ public class MigrationUI {
                     );
                 } catch (Exception e) {
                     log("❌ MySQL 连接失败: " + e.getMessage());
+                } finally {
+                    latch.countDown();
                 }
+            }).start();
+
+            try {
+                latch.await(); // 等待两个连接都完成
+            } catch (InterruptedException e) {
+                log("⚠️ 连接过程被中断: " + e.getMessage());
+                Thread.currentThread().interrupt();
+            }
                 return null;
             }
 
             @Override
-            protected void done() {
+        protected void done() {
+            try {
+                get(); // 检索后台任务异常
                 dbController.testConnections(); // 测试并显示结果弹窗
+            } catch (Exception e) {
+                log("连接过程发生错误: " + e.getMessage());
+            } finally {
+                isConnecting = false; // 重置连接状态
             }
+        }
         }.execute();
     }
 
+    /**
+     * 带延迟防抖功能的文档变更监听器
+     */
+    private class DocumentChangeListener implements DocumentListener {
+        private final Runnable callback;
+        private Timer debounceTimer;
+        
+        public DocumentChangeListener(Runnable callback) {
+            this.callback = callback;
+            this.debounceTimer = new Timer(1000, e -> callback.run());
+            this.debounceTimer.setRepeats(false);
+        }
+        
+        @Override public void insertUpdate(DocumentEvent e) { restartTimer(); }
+        @Override public void removeUpdate(DocumentEvent e) { restartTimer(); }
+        @Override public void changedUpdate(DocumentEvent e) { restartTimer(); }
+        
+        private void restartTimer() {
+            debounceTimer.stop();
+            debounceTimer.start();
+        }
+    }
+    
     private void setupChangeListeners() {
-        DocumentListener oracleListener = new DocumentChangeListener(() -> oracleConfigChanged = true);
+        // Oracle配置变更监听器（带自动重连）
+        DocumentListener oracleListener = new DocumentChangeListener(() -> {
+            oracleConfigChanged = true;
+            log("检测到Oracle配置变更，正在重新连接...");
+            initializeConnectionsWithUISettings();
+        });
         oracleHostField.getDocument().addDocumentListener(oracleListener);
         oraclePortField.getDocument().addDocumentListener(oracleListener);
         oracleSIDField.getDocument().addDocumentListener(oracleListener);
         oracleUserField.getDocument().addDocumentListener(oracleListener);
         oraclePwdField.getDocument().addDocumentListener(oracleListener);
-        oracleConnectModeBox.addActionListener(e -> oracleConfigChanged = true);
+        oracleConnectModeBox.addActionListener(e -> {
+            oracleConfigChanged = true;
+            log("检测到Oracle连接方式变更，正在重新连接...");
+            initializeConnectionsWithUISettings();
+        });
 
-        DocumentListener mysqlListener = new DocumentChangeListener(() -> mysqlConfigChanged = true);
+        // MySQL配置变更监听器（带自动重连）
+        DocumentListener mysqlListener = new DocumentChangeListener(() -> {
+            mysqlConfigChanged = true;
+            log("检测到MySQL配置变更，正在重新连接...");
+            initializeConnectionsWithUISettings();
+        });
         mysqlUrlField.getDocument().addDocumentListener(mysqlListener);
         mysqlDbNameField.getDocument().addDocumentListener(mysqlListener);
         mysqlUserField.getDocument().addDocumentListener(mysqlListener);
@@ -367,14 +439,5 @@ public class MigrationUI {
     public JCheckBox getDropOldTableCheckBox() { return dropOldTableCheckBox; }
     public JCheckBox getMigrateForeignKeysCheckBox() { return migrateForeignKeysCheckBox; }
 
-    /**
- * 一个简单的DocumentListener，在任何更改时运行回调。
- */
-    private static class DocumentChangeListener implements DocumentListener {
-        private final Runnable callback;
-        public DocumentChangeListener(Runnable callback) { this.callback = callback; }
-        @Override public void insertUpdate(DocumentEvent e) { callback.run(); }
-        @Override public void removeUpdate(DocumentEvent e) { callback.run(); }
-        @Override public void changedUpdate(DocumentEvent e) { callback.run(); }
-    }
+
 }
