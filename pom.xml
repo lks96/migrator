@@ -22,25 +22,6 @@
       <artifactId>ojdbc8</artifactId>
       <version>21.1.0.0</version>
     </dependency>
-
-    <!-- ✅ HikariCP 连接池 -->
-    <dependency>
-      <groupId>com.zaxxer</groupId>
-      <artifactId>HikariCP</artifactId>
-      <version>4.0.3</version>
-    </dependency>
-
-    <!-- 如果你确实需要这个 interceptor-api（如 Spring） -->
-    <dependency>
-      <groupId>javax.interceptor</groupId>
-      <artifactId>javax.interceptor-api</artifactId>
-      <version>1.2</version>
-    </dependency>
-      <dependency>
-        <groupId>com.zaxxer</groupId>
-        <artifactId>HikariCP</artifactId>
-        <version>5.0.1</version>
-    </dependency>
 </dependencies>
 
   <build>
