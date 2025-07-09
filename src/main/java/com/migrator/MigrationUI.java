@@ -575,11 +575,11 @@ public class MigrationUI {
                     String[] patterns = filterText.split(",");
                     Set<String> matched = new HashSet<>();
                     for (String pattern : patterns) {
-                        pattern = pattern.trim().toUpperCase();
+                        pattern = pattern.trim();
                         try {
-                            Pattern regex = Pattern.compile(pattern);
+                            Pattern regex = Pattern.compile(pattern, Pattern.CASE_INSENSITIVE); // 👈 忽略大小写
                             for (String table : allTableNames) {
-                                if (regex.matcher(table).matches()) {
+                                if (regex.matcher(table).find()) {
                                     matched.add(table);
                                 }
                             }
@@ -587,6 +587,7 @@ public class MigrationUI {
                             log("⚠️ 正则表达式无效: " + pattern + "，将忽略该项");
                         }
                     }
+                    logArea.append("匹配到 " + matched.size() + " 张表。");
                     selectedTables = matched;
                 } else {
                     TableSelectionDialog dialog = new TableSelectionDialog(null, allTableNames);
