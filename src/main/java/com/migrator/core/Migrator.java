@@ -19,8 +19,8 @@ import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
 /**
- * Handles the core logic of database migration.
- * This class performs the actual migration of schema and data from Oracle to MySQL.
+ * 处理数据库迁移的核心逻辑。
+ * 此类执行从Oracle到MySQL的模式和数据的实际迁移。
  */
 public class Migrator {
 
@@ -30,11 +30,11 @@ public class Migrator {
     private final JTextArea logArea;
 
     /**
-     * Constructor for Migrator.
-     * @param dbController The database controller for getting connections.
-     * @param configManager The configuration manager for settings.
-     * @param ui The main UI frame, used for accessing UI components.
-     */
+ * Migrator的构造方法。
+ * @param dbController 用于获取连接的数据库控制器。
+ * @param configManager 用于设置的配置管理器。
+ * @param ui 主UI框架，用于访问UI组件。
+ */
     public Migrator(DatabaseController dbController, ConfigManager configManager, MigrationUI ui) {
         this.dbController = dbController;
         this.configManager = configManager;
@@ -43,13 +43,13 @@ public class Migrator {
     }
 
     /**
-     * Starts the migration process in a background thread.
-     */
+ * 在后台线程中启动迁移过程。
+ */
     public void doMigration() {
         log("=====================================================");
         log("准备开始迁移...");
 
-        // Use SwingWorker to perform migration in the background
+        // 使用SwingWorker在后台执行迁移
         SwingWorker<Void, String> migrationWorker = new SwingWorker<Void, String>() {
             @Override
             protected Void doInBackground() throws Exception {
@@ -124,7 +124,7 @@ public class Migrator {
                     try {
                         mysqlConn.setAutoCommit(false);
 
-                        // Migrate Structure
+                        // 迁移结构
                         if (migrateStructure) {
                             publish("    - 正在迁移表结构...");
                             try (Statement stmt = mysqlConn.createStatement()) {
@@ -143,26 +143,26 @@ public class Migrator {
                                 } catch (SQLException e) {
                                     publish("    - ❌ 表结构创建失败: " + e.getMessage());
                                     SQLFileUtil.errorSql(createSQL, configManager.getProperty("file.error", "log/error.sql"));
-                                    // Continue to next table if structure fails
+                                    // 如果结构迁移失败则继续下一个表
                                     mysqlConn.rollback();
                                     continue;
                                 }
                             }
                         }
 
-                        // Migrate Data
+                        // 迁移数据
                         if (migrateData) {
                             publish("    - 正在迁移数据...");
                             migrateDataForTable(oracleConn, mysqlConn, tableName);
                         }
 
-                        // Migrate Foreign Keys (after all tables are created and data inserted)
+                        // 迁移外键（在所有表创建和数据插入后）
                         if (migrateStructure && ui.getMigrateForeignKeysCheckBox().isSelected()) {
                             publish("    - 正在迁移外键...");
                             migrateForeignKeys(oracleConn, mysqlConn, tableName, oracleUser);
                         }
 
-                        // Re-enable foreign key checks
+                        // 重新启用外键检查
                         if (migrateStructure) {
                             try (Statement stmt = mysqlConn.createStatement()) {
                                 stmt.execute("SET FOREIGN_KEY_CHECKS=1");
@@ -288,7 +288,7 @@ public class Migrator {
      * @throws SQLException if a database access error occurs.
      */
     private String generateCreateTableSQL(Connection oracleConn, String tableName, String owner) throws SQLException {
-        // Get table comment
+        // 获取表注释
         String tableComment = "";
         String tableCommentSql = "SELECT COMMENTS FROM ALL_TAB_COMMENTS WHERE OWNER = ? AND TABLE_NAME = ?";
         try (PreparedStatement ps = oracleConn.prepareStatement(tableCommentSql)) {
@@ -303,7 +303,7 @@ public class Migrator {
 
         StringBuilder sb = new StringBuilder("CREATE TABLE `").append(tableName.toLowerCase()).append("` (\n");
 
-        // Get column details
+        // 获取列详情
         String columnsSql = "SELECT c.COLUMN_NAME, c.DATA_TYPE, c.DATA_LENGTH, c.DATA_PRECISION, c.DATA_SCALE, c.NULLABLE, " +
                 "cc.COMMENTS, c.DATA_DEFAULT " +
                 "FROM ALL_TAB_COLUMNS c " +
@@ -347,7 +347,7 @@ public class Migrator {
             }
         }
 
-        // Get primary keys
+        // 获取主键
         List<String> primaryKeys = new ArrayList<>();
         String pkSql = "SELECT cols.column_name FROM all_constraints cons, all_cons_columns cols " +
                 "WHERE cons.constraint_type = 'P' AND cons.owner = ? AND cons.table_name = ? " +
@@ -365,7 +365,7 @@ public class Migrator {
             sb.append("  PRIMARY KEY (").append(String.join(", ", primaryKeys.stream().map(pk -> "`" + pk + "`").toArray(String[]::new))).append("),\n");
         }
 
-        // Clean up trailing comma
+        // 清理末尾逗号
         if (sb.toString().trim().endsWith(",")) {
             sb.setLength(sb.length() - 2); // Remove ",\n"
             sb.append("\n");
@@ -440,14 +440,14 @@ public class Migrator {
         String oracleTypeUpper = oracleType.toUpperCase();
         DefaultTableModel mappingModel = ui.getMappingTableModel();
 
-        // Check custom mappings first
+        // 首先检查自定义映射
         for (int i = 0; i < mappingModel.getRowCount(); i++) {
             if (oracleTypeUpper.equalsIgnoreCase((String) mappingModel.getValueAt(i, 0))) {
                 return (String) mappingModel.getValueAt(i, 1);
             }
         }
 
-        // Handle complex types like TIMESTAMP(6)
+        // 处理复杂类型如TIMESTAMP(6)
         if (oracleTypeUpper.startsWith("TIMESTAMP")) {
             return "DATETIME(6)";
         }
@@ -494,7 +494,7 @@ public class Migrator {
      */
     private void log(String msg) {
         if (logArea != null) {
-            // Ensure logging is done on the EDT
+            // 确保日志在EDT上完成
             SwingUtilities.invokeLater(() -> {
                 logArea.append(msg + "\n");
                 logArea.setCaretPosition(logArea.getDocument().getLength());

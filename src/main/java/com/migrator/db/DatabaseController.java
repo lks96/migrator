@@ -7,9 +7,8 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 
 /**
- * Handles all database connection logic.
- * This class is responsible for creating, managing, testing, and closing
- * connections to both Oracle and MySQL databases.
+ * 处理所有数据库连接逻辑。
+ * 该类负责创建、管理、测试和关闭Oracle与MySQL数据库的连接。
  */
 public class DatabaseController {
 
@@ -18,26 +17,26 @@ public class DatabaseController {
     private final JTextArea logArea;
 
     /**
-     * Constructor for DatabaseController.
-     * @param logArea The JTextArea for logging messages.
-     */
+ * DatabaseController的构造方法。
+ * @param logArea 用于记录消息的JTextArea。
+ */
     public DatabaseController(JTextArea logArea) {
         this.logArea = logArea;
     }
 
     /**
-     * Establishes a connection to the Oracle database using provided credentials.
-     * @param host The database host.
-     * @param port The database port.
-     * @param sidOrService The SID or Service Name.
-     * @param user The username.
-     * @param password The password.
-     * @param mode The connection mode ("SID" or "SERVICE_NAME").
-     * @throws SQLException if a database access error occurs.
-     */
+ * 使用提供的凭据建立与Oracle数据库的连接。
+ * @param host 数据库主机。
+ * @param port 数据库端口。
+ * @param sidOrService SID或服务名。
+ * @param user 用户名。
+ * @param password 密码。
+ * @param mode 连接模式（"SID"或"SERVICE_NAME"）。
+ * @throws SQLException 如果数据库访问出错。
+ */
     public void connectOracle(String host, String port, String sidOrService, String user, String password, String mode) throws SQLException {
         if (oracleConn != null && !oracleConn.isClosed()) {
-            return; // Already connected
+            return; // 已连接
         }
         String url;
         if ("SID".equalsIgnoreCase(mode)) {
@@ -51,13 +50,13 @@ public class DatabaseController {
     }
 
     /**
-     * Establishes a connection to the MySQL database.
-     * @param url The host and port part of the JDBC URL (e.g., "127.0.0.1:3306").
-     * @param dbName The database name.
-     * @param user The username.
-     * @param password The password.
-     * @throws SQLException if a database access error occurs.
-     */
+ * 建立与MySQL数据库的连接。
+ * @param url JDBC URL中的主机和端口部分（例如："127.0.0.1:3306"）。
+ * @param dbName 数据库名称。
+ * @param user 用户名。
+ * @param password 密码。
+ * @throws SQLException 如果数据库访问出错。
+ */
     public void connectMySQL(String url, String dbName, String user, String password) throws SQLException {
         if (mysqlConn != null && !mysqlConn.isClosed()) {
             return; // Already connected
@@ -69,8 +68,8 @@ public class DatabaseController {
     }
 
     /**
-     * Tests the current Oracle and MySQL connections.
-     */
+ * 测试当前的Oracle和MySQL连接。
+ */
     public void testConnections() {
         log("开始测试连接...");
         boolean oracleOk = false;
@@ -106,8 +105,8 @@ public class DatabaseController {
     }
 
     /**
-     * Closes both Oracle and MySQL connections if they are open.
-     */
+ * 如果Oracle和MySQL连接处于打开状态，则关闭它们。
+ */
     public void closeConnections() {
         try {
             if (oracleConn != null && !oracleConn.isClosed()) {
@@ -125,7 +124,7 @@ public class DatabaseController {
         }
     }
 
-    // --- Getters for connections ---
+    // --- 连接的getter方法 ---
     public Connection getOracleConnection() {
         return oracleConn;
     }
@@ -135,9 +134,9 @@ public class DatabaseController {
     }
 
     /**
-     * Logs a message to the UI's log area.
-     * @param msg The message to log.
-     */
+ * 将消息记录到UI的日志区域。
+ * @param msg 要记录的消息。
+ */
     private void log(String msg) {
         if (logArea != null) {
             SwingUtilities.invokeLater(() -> {

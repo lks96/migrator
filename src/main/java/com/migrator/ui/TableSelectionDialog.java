@@ -8,8 +8,8 @@ import java.util.Set;
 import java.util.Vector;
 
 /**
- * A dialog window for selecting tables to migrate.
- * It displays a list of available tables with checkboxes for selection.
+ * 用于选择要迁移的表的对话框窗口。
+ * 它显示可用表的列表，并带有用于选择的复选框。
  */
 public class TableSelectionDialog extends JDialog {
 
@@ -17,28 +17,28 @@ public class TableSelectionDialog extends JDialog {
     private final Set<String> selectedTables = new HashSet<>();
 
     /**
-     * Constructor for TableSelectionDialog.
-     * @param parent The parent frame.
-     * @param tableNames A list of table names to display.
-     */
+ * TableSelectionDialog的构造方法。
+ * @param parent 父框架。
+ * @param tableNames 要显示的表名列表。
+ */
     public TableSelectionDialog(Frame parent, List<String> tableNames) {
         super(parent, "选择要迁移的表", true);
         setSize(400, 600);
         setLocationRelativeTo(parent);
         setLayout(new BorderLayout(10, 10));
 
-        // Instructions
+        // 说明
         JLabel instructionLabel = new JLabel("请选择要迁移的表 (支持 Ctrl/Shift 多选):", SwingConstants.CENTER);
         instructionLabel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         add(instructionLabel, BorderLayout.NORTH);
 
-        // Table List
+        // 表列表
         tableList = new JList<>(new Vector<>(tableNames));
         tableList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
         JScrollPane scrollPane = new JScrollPane(tableList);
         add(scrollPane, BorderLayout.CENTER);
 
-        // Buttons Panel
+        // 按钮面板
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JButton okButton = new JButton("确定");
         JButton cancelButton = new JButton("取消");
@@ -49,7 +49,7 @@ public class TableSelectionDialog extends JDialog {
         buttonPanel.add(cancelButton);
         add(buttonPanel, BorderLayout.SOUTH);
 
-        // Action Listeners
+        // 动作监听器
         okButton.addActionListener(e -> {
             List<String> selected = tableList.getSelectedValuesList();
             if (selected != null) {
@@ -71,9 +71,9 @@ public class TableSelectionDialog extends JDialog {
     }
 
     /**
-     * Returns the set of table names that the user selected.
-     * @return A set of selected table names.
-     */
+ * 返回用户选择的表名集合。
+ * @return 选中的表名集合。
+ */
     public Set<String> getSelectedTables() {
         return selectedTables;
     }

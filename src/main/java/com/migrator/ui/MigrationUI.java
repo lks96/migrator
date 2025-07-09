@@ -18,9 +18,8 @@ import java.io.File;
 import java.io.IOException;
 
 /**
- * The main user interface for the database migration tool.
- * This class is responsible for building the GUI, handling user interactions,
- * and coordinating the actions of the controller, manager, and migrator classes.
+ * 数据库迁移工具的主用户界面。
+ * 此类负责构建GUI、处理用户交互以及协调控制器、管理器和迁移器类的操作。
  */
 public class MigrationUI {
 
@@ -44,25 +43,25 @@ public class MigrationUI {
     private boolean mysqlConfigChanged = false;
 
     /**
-     * Constructor for MigrationUI. Initializes the controllers.
-     */
+ * MigrationUI的构造方法。初始化控制器。
+ */
     public MigrationUI() {
-        // The logArea is created here and passed to other components that need it.
+        // logArea在此处创建并传递给其他需要它的组件。
         this.configManager = new ConfigManager(logArea);
         this.dbController = new DatabaseController(logArea);
         this.migratorMain = new Migrator(dbController, configManager, this);
     }
 
     /**
-     * Creates and displays the main GUI.
-     */
+ * 创建并显示主GUI。
+ */
     public void createAndShowGUI() {
         frame = new JFrame("Oracle → MySQL 表结构与数据迁移工具");
 
-        // Load configuration first
+        // 首先加载配置
         configManager.loadExternalConfig();
 
-        // Set frame icon
+        // 设置窗口图标
         try {
             String iconPath = configManager.getProperty("icon.path", "app/icon/icon.png");
             BufferedImage iconImage = ImageIO.read(new File(iconPath));
@@ -75,7 +74,7 @@ public class MigrationUI {
         frame.setSize(1080, 750);
         frame.setLayout(new BorderLayout(10,10));
 
-        // Add window listener to handle closing connections
+        // 添加窗口监听器以处理关闭连接
         frame.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
@@ -86,22 +85,22 @@ public class MigrationUI {
             }
         });
 
-        // Main Panels
+        // 主面板
         frame.add(createFilterPanel(), BorderLayout.NORTH);
         frame.add(createMainSplitPane(), BorderLayout.CENTER);
         frame.add(createBottomButtonPanel(), BorderLayout.SOUTH);
 
-        // Apply loaded config to UI fields
+        // 将加载的配置应用到UI字段
         configManager.applyConfigToUI(this);
 
-        // Add listeners to detect config changes
+        // 添加监听器以检测配置更改
         setupChangeListeners();
 
-        // Finalize and show frame
+        // 完成并显示窗口
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
 
-        // Attempt to connect with loaded settings
+        // 尝试使用加载的设置进行连接
         initializeConnectionsWithUISettings();
     }
 
@@ -245,7 +244,7 @@ public class MigrationUI {
         gbc.gridy = 1;
         panel.add(migrateForeignKeysCheckBox, gbc);
 
-        // Add a filler component to push checkboxes to the top
+        // 添加填充组件以将复选框推到顶部
         gbc.gridy = 2;
         gbc.weighty = 1.0;
         panel.add(new JLabel(), gbc);
@@ -256,11 +255,11 @@ public class MigrationUI {
     // --- Action & Helper Methods ---
 
     private void initializeConnectionsWithUISettings() {
-        // Run connection logic in a background thread to not freeze the UI
+        // 在后台线程中运行连接逻辑，以免冻结UI
         new SwingWorker<Void, Void>() {
             @Override
             protected Void doInBackground() {
-                dbController.closeConnections(); // Close any existing connections first
+                dbController.closeConnections(); // 首先关闭任何现有连接
                 try {
                     dbController.connectOracle(
                             oracleHostField.getText(), oraclePortField.getText(), oracleSIDField.getText(),
@@ -283,7 +282,7 @@ public class MigrationUI {
 
             @Override
             protected void done() {
-                dbController.testConnections(); // Test and show result popup
+                dbController.testConnections(); // 测试并显示结果弹窗
             }
         }.execute();
     }
@@ -369,8 +368,8 @@ public class MigrationUI {
     public JCheckBox getMigrateForeignKeysCheckBox() { return migrateForeignKeysCheckBox; }
 
     /**
-     * A simple DocumentListener that runs a callback on any change.
-     */
+ * 一个简单的DocumentListener，在任何更改时运行回调。
+ */
     private static class DocumentChangeListener implements DocumentListener {
         private final Runnable callback;
         public DocumentChangeListener(Runnable callback) { this.callback = callback; }

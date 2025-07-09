@@ -6,20 +6,20 @@ import com.migrator.ui.MigrationUI;
 import javax.swing.SwingUtilities;
 
 /**
- * Main entry point for the application.
- * This class is responsible for creating and showing the main UI on the Event Dispatch Thread.
+ * 应用程序的主入口点。
+ * 此类负责在事件调度线程上创建和显示主UI。
  */
 public class Main {
 
     /**
-     * The main method that starts the application.
-     * @param args Command line arguments (not used).
-     */
+ * 启动应用程序的主方法。
+ * @param args 命令行参数（未使用）。
+ */
     public static void main(String[] args) {
-        // Ensure the GUI is created and updated on the Event Dispatch Thread.
+        // 确保GUI在事件调度线程上创建和更新。
         SwingUtilities.invokeLater(() -> {
-            // Create an instance of the main UI class and display it.
-            // The MigrationUI constructor will initialize all necessary components and controllers.
+            // 创建主UI类的实例并显示它。
+            // MigrationUI构造函数将初始化所有必要的组件和控制器。
             new MigrationUI().createAndShowGUI();
         });
     }
