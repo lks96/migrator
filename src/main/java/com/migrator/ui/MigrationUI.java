@@ -18,6 +18,8 @@ import java.io.File;
 import java.io.IOException;
 import javax.swing.Timer;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Arrays; // 添加缺失的导入语句
 
 /**
  * 数据库迁移工具的主用户界面。
@@ -34,6 +36,7 @@ public class MigrationUI {
     private final JTextArea logArea = new JTextArea(20, 40);
     private DefaultTableModel mappingTableModel;
     private JCheckBox dropOldTableCheckBox, migrateForeignKeysCheckBox;
+    private JButton migrateButton, testButton;
 
     // --- Controllers and Managers ---
     private final DatabaseController dbController;
@@ -41,9 +44,7 @@ public class MigrationUI {
     private final Migrator migratorMain;
 
     // --- State Flags ---
-    private boolean oracleConfigChanged = false;
-    private boolean mysqlConfigChanged = false;
-    private boolean isConnecting = false; // 连接状态标志
+    private final AtomicBoolean isConnecting = new AtomicBoolean(false); // 连接状态标志（线程安全）
 
     /**
  * MigrationUI的构造方法。初始化控制器。
@@ -140,14 +141,16 @@ public class MigrationUI {
         panel.setBorder(BorderFactory.createTitledBorder("日志控制台"));
         logArea.setEditable(false);
         logArea.setFont(new Font("Monospaced", Font.PLAIN, 13));
+        logArea.setLineWrap(true);
+        logArea.setWrapStyleWord(true);
         panel.add(new JScrollPane(logArea), BorderLayout.CENTER);
         return panel;
     }
 
     private JPanel createBottomButtonPanel() {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 10));
-        JButton migrateButton = new JButton("开始迁移");
-        JButton testButton = new JButton("测试并保存连接");
+        migrateButton = new JButton("开始迁移");
+        testButton = new JButton("测试并保存连接");
 
         setupButton(migrateButton, new Color(41, 128, 185));
         setupButton(testButton, new Color(39, 174, 96));
@@ -172,6 +175,8 @@ public class MigrationUI {
 
         oracleHostField = new JTextField(20);
         oraclePortField = new JTextField(20);
+        oraclePortField.setText("1521");
+        oraclePortField.setToolTipText("Oracle数据库端口，默认为1521");
         oracleSIDField = new JTextField(20);
         oracleUserField = new JTextField(20);
         oraclePwdField = new JPasswordField(20);
@@ -192,6 +197,8 @@ public class MigrationUI {
         GridBagConstraints gbc = createGBC();
 
         mysqlUrlField = new JTextField(20);
+        mysqlUrlField.setText("localhost:3306");
+        mysqlUrlField.setToolTipText("MySQL主机和端口，格式: 主机名:端口号，默认为localhost:3306");
         mysqlUrlField.setToolTipText("格式: 主机:端口, 例如: 127.0.0.1:3306");
         mysqlDbNameField = new JTextField(20);
         mysqlUserField = new JTextField(20);
@@ -257,12 +264,57 @@ public class MigrationUI {
 
     // --- Action & Helper Methods ---
 
+    private boolean validateOracleSettings() {
+        if (oracleHostField.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(frame, "Oracle主机名不能为空", "输入错误", JOptionPane.ERROR_MESSAGE);
+            return false;
+        }
+        String portRegex = "^(0|([1-9]\\d{0,3}|[1-5]\\d{4}|6[0-4]\\d{3}|65[0-4]\\d{2}|655[0-2]\\d|6553[0-5]))$";
+        if (oraclePortField.getText().trim().isEmpty() || !oraclePortField.getText().matches(portRegex)) {
+            JOptionPane.showMessageDialog(frame, "请输入有效的Oracle端口号", "输入错误", JOptionPane.ERROR_MESSAGE);
+            return false;
+        }
+        if (oracleSIDField.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(frame, "Oracle SID/服务名不能为空", "输入错误", JOptionPane.ERROR_MESSAGE);
+            return false;
+        }
+        if (oracleUserField.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(frame, "Oracle用户名不能为空", "输入错误", JOptionPane.ERROR_MESSAGE);
+            return false;
+        }
+        return true;
+    }
+
+    private boolean validateMySQLSettings() {
+        String mysqlUrlRegex = "^[^:]+:(0|([1-9]\\d{0,3}|[1-5]\\d{4}|6[0-4]\\d{3}|65[0-4]\\d{2}|655[0-2]\\d|6553[0-5]))$";
+        if (mysqlUrlField.getText().trim().isEmpty() || !mysqlUrlField.getText().matches(mysqlUrlRegex)) {
+            JOptionPane.showMessageDialog(frame, "请输入有效的MySQL主机:端口", "输入错误", JOptionPane.ERROR_MESSAGE);
+            return false;
+        }
+        if (mysqlDbNameField.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(frame, "MySQL数据库名不能为空", "输入错误", JOptionPane.ERROR_MESSAGE);
+            return false;
+        }
+        if (mysqlUserField.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(frame, "MySQL用户名不能为空", "输入错误", JOptionPane.ERROR_MESSAGE);
+            return false;
+        }
+        return true;
+    }
+
     private void initializeConnectionsWithUISettings() {
-        if (isConnecting) {
+        if (!validateOracleSettings() || !validateMySQLSettings()) {
+            return;
+        }
+        if (isConnecting.get()) {
             log("连接已在进行中，忽略新请求...");
             return;
         }
-        isConnecting = true;
+        isConnecting.set(true);
+        SwingUtilities.invokeLater(() -> {
+            migrateButton.setEnabled(false);
+            testButton.setEnabled(false);
+        });
         // 在后台线程中运行连接逻辑，以免冻结UI
         new SwingWorker<Void, Void>() {
             @Override
@@ -275,29 +327,39 @@ public class MigrationUI {
                 try {
                     dbController.connectOracle(
                             oracleHostField.getText(), oraclePortField.getText(), oracleSIDField.getText(),
-                            oracleUserField.getText(), String.valueOf(oraclePwdField.getPassword()),
+                            oracleUserField.getText(), new String(oraclePwdField.getPassword()),
                             (String) oracleConnectModeBox.getSelectedItem()
                     );
                 } catch (Exception e) {
-                    log("❌ Oracle 连接失败: " + e.getMessage());
+                    String errorMsg = "Oracle 连接失败: " + e.getMessage();
+                    log("❌ " + errorMsg);
+                    SwingUtilities.invokeLater(() -> 
+                        JOptionPane.showMessageDialog(frame, errorMsg, "数据库连接错误", JOptionPane.ERROR_MESSAGE)
+                    );
                 } finally {
+                    // 清除密码数组中的敏感信息
+                    Arrays.fill(oraclePwdField.getPassword(), '0');
                     latch.countDown();
                 }
-            }).start();
+            }, "Oracle-Connection-Thread").start();
 
             // 并行连接MySQL
             new Thread(() -> {
                 try {
                     dbController.connectMySQL(
                             mysqlUrlField.getText(), mysqlDbNameField.getText(),
-                            mysqlUserField.getText(), String.valueOf(mysqlPwdField.getPassword())
+                            mysqlUserField.getText(), new String(mysqlPwdField.getPassword())
                     );
                 } catch (Exception e) {
-                    log("❌ MySQL 连接失败: " + e.getMessage());
+                    String errorMsg = "MySQL 连接失败: " + e.getMessage();
+                    log("❌ " + errorMsg);
+                    SwingUtilities.invokeLater(() -> 
+                        JOptionPane.showMessageDialog(frame, errorMsg, "数据库连接错误", JOptionPane.ERROR_MESSAGE)
+                    );
                 } finally {
                     latch.countDown();
                 }
-            }).start();
+            }, "MySQL-Connection-Thread").start();
 
             try {
                 latch.await(); // 等待两个连接都完成
@@ -316,7 +378,11 @@ public class MigrationUI {
             } catch (Exception e) {
                 log("连接过程发生错误: " + e.getMessage());
             } finally {
-                isConnecting = false; // 重置连接状态
+                isConnecting.set(false); // 重置连接状态
+                    SwingUtilities.invokeLater(() -> {
+                        migrateButton.setEnabled(true);
+                        testButton.setEnabled(true);
+                    });
             }
         }
         }.execute();
@@ -331,7 +397,7 @@ public class MigrationUI {
         
         public DocumentChangeListener(Runnable callback) {
             this.callback = callback;
-            this.debounceTimer = new Timer(1000, e -> callback.run());
+            this.debounceTimer = new Timer(2000, e -> callback.run());
             this.debounceTimer.setRepeats(false);
         }
         
@@ -348,7 +414,6 @@ public class MigrationUI {
     private void setupChangeListeners() {
         // Oracle配置变更监听器（带自动重连）
         DocumentListener oracleListener = new DocumentChangeListener(() -> {
-            oracleConfigChanged = true;
             log("检测到Oracle配置变更，正在重新连接...");
             initializeConnectionsWithUISettings();
         });
@@ -358,14 +423,12 @@ public class MigrationUI {
         oracleUserField.getDocument().addDocumentListener(oracleListener);
         oraclePwdField.getDocument().addDocumentListener(oracleListener);
         oracleConnectModeBox.addActionListener(e -> {
-            oracleConfigChanged = true;
             log("检测到Oracle连接方式变更，正在重新连接...");
             initializeConnectionsWithUISettings();
         });
 
         // MySQL配置变更监听器（带自动重连）
         DocumentListener mysqlListener = new DocumentChangeListener(() -> {
-            mysqlConfigChanged = true;
             log("检测到MySQL配置变更，正在重新连接...");
             initializeConnectionsWithUISettings();
         });
