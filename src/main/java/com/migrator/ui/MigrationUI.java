@@ -170,7 +170,7 @@ public class MigrationUI {
 
     private JPanel createOracleDbPanel() {
         JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBorder(createTitledBorder("Oracle 数据库配置"));
+//        panel.setBorder(createTitledBorder("Oracle 数据库配置"));
         GridBagConstraints gbc = createGBC();
 
         oracleHostField = new JTextField(20);
@@ -193,7 +193,7 @@ public class MigrationUI {
 
     private JPanel createMySqlDbPanel() {
         JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBorder(createTitledBorder("MySQL 数据库配置"));
+//        panel.setBorder(createTitledBorder("MySQL 数据库配置"));
         GridBagConstraints gbc = createGBC();
 
         mysqlUrlField = new JTextField(20);
