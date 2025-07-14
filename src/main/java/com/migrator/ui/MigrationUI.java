@@ -54,8 +54,8 @@ public class MigrationUI {
     private final AtomicBoolean isConnecting = new AtomicBoolean(false); // 连接状态标志（线程安全）
 
     /**
- * MigrationUI的构造方法。初始化控制器。
- */
+     * MigrationUI的构造方法。初始化控制器。
+     */
     public MigrationUI() {
         // logArea在此处创建并传递给其他需要它的组件。
         this.configManager = new ConfigManager(logArea);
@@ -64,8 +64,8 @@ public class MigrationUI {
     }
 
     /**
- * 创建并显示主GUI。
- */
+     * 创建并显示主GUI。
+     */
     public void createAndShowGUI() {
         // 设置系统外观以获得原生界面体验
         try {
@@ -73,33 +73,33 @@ public class MigrationUI {
         } catch (Exception e) {
             log("无法设置系统外观: " + e.getMessage());
         }
-        
+
         frame = new JFrame("Oracle → MySQL 表结构与数据迁移工具");
         frame.setMinimumSize(new Dimension(900, 650)); // 设置窗口最小尺寸
-        
+
         // 添加顶部状态栏
         JPanel statusBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
         statusBar.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(220, 220, 220)));
         statusBar.setBackground(new Color(245, 245, 245));
-        
+
         oracleStatusLabel = new JLabel("Oracle: 未连接");
         mysqlStatusLabel = new JLabel("MySQL: 未连接");
         progressLabel = new JLabel("就绪");
-        
+
         oracleStatusLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         mysqlStatusLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         progressLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
-        
+
         oracleStatusLabel.setForeground(Color.GRAY);
         mysqlStatusLabel.setForeground(Color.GRAY);
         progressLabel.setForeground(new Color(41, 128, 185));
-        
+
         statusBar.add(oracleStatusLabel);
         statusBar.add(new JSeparator(SwingConstants.VERTICAL));
         statusBar.add(mysqlStatusLabel);
         statusBar.add(new JSeparator(SwingConstants.VERTICAL));
         statusBar.add(progressLabel);
-        
+
         frame.add(statusBar, BorderLayout.NORTH);
 
         // 首先加载配置
@@ -116,7 +116,7 @@ public class MigrationUI {
 
         frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
         frame.setSize(1080, 750);
-        frame.setLayout(new BorderLayout(15,15));
+        frame.setLayout(new BorderLayout(15, 15));
         frame.getContentPane().setBackground(new Color(245, 245, 245)); // 设置全局背景色
 
         // 添加窗口监听器以处理关闭连接
@@ -154,8 +154,8 @@ public class MigrationUI {
         panel.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createEmptyBorder(12, 15, 12, 15),
                 BorderFactory.createTitledBorder(BorderFactory.createLineBorder(new Color(200, 200, 200)),
-                "表名过滤 (支持正则, 逗号分隔, 留空则弹窗选择)", TitledBorder.LEFT, TitledBorder.TOP,
-                new Font("微软雅黑", Font.PLAIN, 13), new Color(60, 60, 60))));
+                        "表名过滤 (支持正则, 逗号分隔, 留空则弹窗选择)", TitledBorder.LEFT, TitledBorder.TOP,
+                        new Font("微软雅黑", Font.PLAIN, 13), new Color(60, 60, 60))));
         panel.setBackground(new Color(240, 240, 245));
 
         tableFilterField = new JTextField(75);
@@ -193,27 +193,35 @@ public class MigrationUI {
         logArea.setFont(new Font("Monospaced", Font.PLAIN, 13));
         logArea.setLineWrap(true);
         logArea.setWrapStyleWord(true);
-        
+
         // 添加行号显示
         JTextArea lineNumbers = new JTextArea();
         lineNumbers.setEditable(false);
         lineNumbers.setFont(logArea.getFont());
         lineNumbers.setBackground(new Color(240, 240, 240));
         lineNumbers.setForeground(Color.GRAY);
-        
+
         JScrollPane scrollPane = new JScrollPane(logArea);
         scrollPane.setRowHeaderView(lineNumbers);
-        
+
         // 自动滚动到底部
-        DefaultCaret caret = (DefaultCaret)logArea.getCaret();
+        DefaultCaret caret = (DefaultCaret) logArea.getCaret();
         caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);
-        
+
         // 同步行号
         logArea.getDocument().addDocumentListener(new DocumentListener() {
-            public void changedUpdate(DocumentEvent e) { updateLineNumbers(); }
-            public void insertUpdate(DocumentEvent e) { updateLineNumbers(); }
-            public void removeUpdate(DocumentEvent e) { updateLineNumbers(); }
-            
+            public void changedUpdate(DocumentEvent e) {
+                updateLineNumbers();
+            }
+
+            public void insertUpdate(DocumentEvent e) {
+                updateLineNumbers();
+            }
+
+            public void removeUpdate(DocumentEvent e) {
+                updateLineNumbers();
+            }
+
             private void updateLineNumbers() {
                 int lines = logArea.getLineCount();
                 StringBuilder numbers = new StringBuilder();
@@ -223,7 +231,7 @@ public class MigrationUI {
                 lineNumbers.setText(numbers.toString());
             }
         });
-        
+
         panel.add(scrollPane, BorderLayout.CENTER);
         return panel;
     }
@@ -235,26 +243,28 @@ public class MigrationUI {
 
         setupButton(migrateButton, new Color(41, 128, 185));
         setupButton(testButton, new Color(39, 174, 96));
-        
+
         // 添加按钮悬停效果
         migrateButton.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseEntered(java.awt.event.MouseEvent evt) {
                 migrateButton.setBackground(new Color(52, 152, 219));
             }
+
             public void mouseExited(java.awt.event.MouseEvent evt) {
                 migrateButton.setBackground(new Color(41, 128, 185));
             }
         });
-        
+
         testButton.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseEntered(java.awt.event.MouseEvent evt) {
                 testButton.setBackground(new Color(46, 204, 113));
             }
+
             public void mouseExited(java.awt.event.MouseEvent evt) {
                 testButton.setBackground(new Color(39, 174, 96));
             }
         });
-        
+
         // 设置按钮禁用状态样式
         migrateButton.setDisabledIcon(new ImageIcon());
         testButton.setDisabledIcon(new ImageIcon());
@@ -424,71 +434,71 @@ public class MigrationUI {
             @Override
             protected Void doInBackground() {
                 dbController.closeConnections(); // 首先关闭任何现有连接
-            CountDownLatch latch = new CountDownLatch(2);
+                CountDownLatch latch = new CountDownLatch(2);
 
-            // 并行连接Oracle
-            new Thread(() -> {
+                // 并行连接Oracle
+                new Thread(() -> {
+                    try {
+                        dbController.connectOracle(
+                                oracleHostField.getText(), oraclePortField.getText(), oracleSIDField.getText(),
+                                oracleUserField.getText(), new String(oraclePwdField.getPassword()),
+                                (String) oracleConnectModeBox.getSelectedItem()
+                        );
+                    } catch (Exception e) {
+                        String errorMsg = "Oracle 连接失败: " + e.getMessage();
+                        log("❌ " + errorMsg);
+                        SwingUtilities.invokeLater(() ->
+                                JOptionPane.showMessageDialog(frame, errorMsg, "数据库连接错误", JOptionPane.ERROR_MESSAGE)
+                        );
+                    } finally {
+                        // 清除密码数组中的敏感信息
+                        Arrays.fill(oraclePwdField.getPassword(), '0');
+                        latch.countDown();
+                    }
+                }, "Oracle-Connection-Thread").start();
+
+                // 并行连接MySQL
+                new Thread(() -> {
+                    try {
+                        dbController.connectMySQL(
+                                mysqlUrlField.getText(), mysqlDbNameField.getText(),
+                                mysqlUserField.getText(), new String(mysqlPwdField.getPassword())
+                        );
+                    } catch (Exception e) {
+                        String errorMsg = "MySQL 连接失败: " + e.getMessage();
+                        log("❌ " + errorMsg);
+                        SwingUtilities.invokeLater(() ->
+                                JOptionPane.showMessageDialog(frame, errorMsg, "数据库连接错误", JOptionPane.ERROR_MESSAGE)
+                        );
+                    } finally {
+                        latch.countDown();
+                    }
+                }, "MySQL-Connection-Thread").start();
+
                 try {
-                    dbController.connectOracle(
-                            oracleHostField.getText(), oraclePortField.getText(), oracleSIDField.getText(),
-                            oracleUserField.getText(), new String(oraclePwdField.getPassword()),
-                            (String) oracleConnectModeBox.getSelectedItem()
-                    );
-                } catch (Exception e) {
-                    String errorMsg = "Oracle 连接失败: " + e.getMessage();
-                    log("❌ " + errorMsg);
-                    SwingUtilities.invokeLater(() -> 
-                        JOptionPane.showMessageDialog(frame, errorMsg, "数据库连接错误", JOptionPane.ERROR_MESSAGE)
-                    );
-                } finally {
-                    // 清除密码数组中的敏感信息
-                    Arrays.fill(oraclePwdField.getPassword(), '0');
-                    latch.countDown();
+                    latch.await(); // 等待两个连接都完成
+                } catch (InterruptedException e) {
+                    log("⚠️ 连接过程被中断: " + e.getMessage());
+                    Thread.currentThread().interrupt();
                 }
-            }, "Oracle-Connection-Thread").start();
-
-            // 并行连接MySQL
-            new Thread(() -> {
-                try {
-                    dbController.connectMySQL(
-                            mysqlUrlField.getText(), mysqlDbNameField.getText(),
-                            mysqlUserField.getText(), new String(mysqlPwdField.getPassword())
-                    );
-                } catch (Exception e) {
-                    String errorMsg = "MySQL 连接失败: " + e.getMessage();
-                    log("❌ " + errorMsg);
-                    SwingUtilities.invokeLater(() -> 
-                        JOptionPane.showMessageDialog(frame, errorMsg, "数据库连接错误", JOptionPane.ERROR_MESSAGE)
-                    );
-                } finally {
-                    latch.countDown();
-                }
-            }, "MySQL-Connection-Thread").start();
-
-            try {
-                latch.await(); // 等待两个连接都完成
-            } catch (InterruptedException e) {
-                log("⚠️ 连接过程被中断: " + e.getMessage());
-                Thread.currentThread().interrupt();
-            }
                 return null;
             }
 
             @Override
-        protected void done() {
-            try {
-                get(); // 检索后台任务异常
-                dbController.testConnections(); // 测试并显示结果弹窗
-            } catch (Exception e) {
-                log("连接过程发生错误: " + e.getMessage());
-            } finally {
-                isConnecting.set(false); // 重置连接状态
+            protected void done() {
+                try {
+                    get(); // 检索后台任务异常
+                    dbController.testConnections(); // 测试并显示结果弹窗
+                } catch (Exception e) {
+                    log("连接过程发生错误: " + e.getMessage());
+                } finally {
+                    isConnecting.set(false); // 重置连接状态
                     SwingUtilities.invokeLater(() -> {
                         migrateButton.setEnabled(true);
                         testButton.setEnabled(true);
                     });
+                }
             }
-        }
         }.execute();
     }
 
@@ -498,23 +508,34 @@ public class MigrationUI {
     private class DocumentChangeListener implements DocumentListener {
         private final Runnable callback;
         private Timer debounceTimer;
-        
+
         public DocumentChangeListener(Runnable callback) {
             this.callback = callback;
             this.debounceTimer = new Timer(2000, e -> callback.run());
             this.debounceTimer.setRepeats(false);
         }
-        
-        @Override public void insertUpdate(DocumentEvent e) { restartTimer(); }
-        @Override public void removeUpdate(DocumentEvent e) { restartTimer(); }
-        @Override public void changedUpdate(DocumentEvent e) { restartTimer(); }
-        
+
+        @Override
+        public void insertUpdate(DocumentEvent e) {
+            restartTimer();
+        }
+
+        @Override
+        public void removeUpdate(DocumentEvent e) {
+            restartTimer();
+        }
+
+        @Override
+        public void changedUpdate(DocumentEvent e) {
+            restartTimer();
+        }
+
         private void restartTimer() {
             debounceTimer.stop();
             debounceTimer.start();
         }
     }
-    
+
     private void setupChangeListeners() {
         // Oracle配置变更监听器（带自动重连）
         DocumentListener oracleListener = new DocumentChangeListener(() -> {
@@ -551,21 +572,21 @@ public class MigrationUI {
         logArea.append(msg + "\n");
         logArea.setCaretPosition(logArea.getDocument().getLength());
     }
-    
+
     public void updateOracleStatus(boolean connected) {
         SwingUtilities.invokeLater(() -> {
             oracleStatusLabel.setText("Oracle: " + (connected ? "已连接" : "未连接"));
             oracleStatusLabel.setForeground(connected ? new Color(39, 174, 96) : Color.GRAY);
         });
     }
-    
+
     public void updateMySQLStatus(boolean connected) {
         SwingUtilities.invokeLater(() -> {
             mysqlStatusLabel.setText("MySQL: " + (connected ? "已连接" : "未连接"));
             mysqlStatusLabel.setForeground(connected ? new Color(39, 174, 96) : Color.GRAY);
         });
     }
-    
+
     public void updateProgress(String message) {
         SwingUtilities.invokeLater(() -> {
             progressLabel.setText(message);
@@ -574,13 +595,14 @@ public class MigrationUI {
 
     private void setupButton(JButton button, Color color) {
         button.setFont(new Font("微软雅黑", Font.BOLD, 16));
-        button.setForeground(Color.WHITE);
+        // 将文字颜色修改为黑色
+        button.setForeground(Color.BLACK);
         button.setBackground(color);
         button.setPreferredSize(new Dimension(200, 50));
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
         button.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(new Color(220, 220, 220)),
-            BorderFactory.createEmptyBorder(8, 20, 8, 20)
+                BorderFactory.createLineBorder(new Color(220, 220, 220)),
+                BorderFactory.createEmptyBorder(8, 20, 8, 20)
         ));
     }
 
