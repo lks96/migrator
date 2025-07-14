@@ -3,6 +3,7 @@ package com.migrator.ui;
 import com.migrator.config.ConfigManager;
 import com.migrator.core.Migrator;
 import com.migrator.db.DatabaseController;
+import lombok.Data;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -25,6 +26,7 @@ import java.util.Arrays; // 添加缺失的导入语句
  * 数据库迁移工具的主用户界面。
  * 此类负责构建GUI、处理用户交互以及协调控制器、管理器和迁移器类的操作。
  */
+@Data
 public class MigrationUI {
 
     // --- UI Components ---
@@ -42,6 +44,7 @@ public class MigrationUI {
     private final DatabaseController dbController;
     private final ConfigManager configManager;
     private final Migrator migratorMain;
+    private JCheckBox regexFilterCheckBox;
 
     // --- State Flags ---
     private final AtomicBoolean isConnecting = new AtomicBoolean(false); // 连接状态标志（线程安全）
@@ -114,11 +117,18 @@ public class MigrationUI {
                 BorderFactory.createEmptyBorder(10, 10, 5, 10),
                 BorderFactory.createTitledBorder("表名过滤 (支持正则, 逗号分隔, 留空则弹窗选择)")));
         panel.setBackground(new Color(240, 240, 245));
-        tableFilterField = new JTextField(90);
+
+        tableFilterField = new JTextField(75);
         tableFilterField.setToolTipText("例如: CUST_.*,ORDER_INFO,USER_TABLE");
+
+        regexFilterCheckBox = new JCheckBox("使用正则匹配", true); // ✅ 默认启用
+        regexFilterCheckBox.setToolTipText("关闭后将使用完全等于匹配");
+
         panel.add(tableFilterField);
+        panel.add(regexFilterCheckBox);
         return panel;
     }
+
 
     private JSplitPane createMainSplitPane() {
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, createLeftTabbedPane(), createRightLogPanel());
@@ -484,23 +494,8 @@ public class MigrationUI {
         return gbc;
     }
 
-    // --- Getters for components needed by other classes ---
-    public JFrame getFrame() { return frame; }
-    public JTextArea getLogArea() { return logArea; }
-    public JTextField getTableFilterField() { return tableFilterField; }
-    public JTextField getOracleHostField() { return oracleHostField; }
-    public JTextField getOraclePortField() { return oraclePortField; }
-    public JTextField getOracleSIDField() { return oracleSIDField; }
-    public JTextField getOracleUserField() { return oracleUserField; }
-    public JPasswordField getOraclePwdField() { return oraclePwdField; }
-    public JComboBox<String> getOracleConnectModeBox() { return oracleConnectModeBox; }
-    public JTextField getMysqlUrlField() { return mysqlUrlField; }
-    public JTextField getMysqlDbNameField() { return mysqlDbNameField; }
-    public JTextField getMysqlUserField() { return mysqlUserField; }
-    public JPasswordField getMysqlPwdField() { return mysqlPwdField; }
-    public DefaultTableModel getMappingTableModel() { return mappingTableModel; }
-    public JCheckBox getDropOldTableCheckBox() { return dropOldTableCheckBox; }
-    public JCheckBox getMigrateForeignKeysCheckBox() { return migrateForeignKeysCheckBox; }
-
+    public boolean isRegexFilterEnabled() {
+        return regexFilterCheckBox != null && regexFilterCheckBox.isSelected();
+    }
 
 }

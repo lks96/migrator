@@ -2,6 +2,7 @@ package com.migrator;
 
 
 import com.migrator.ui.MigrationUI;
+import com.migrator.util.DateUtils;
 
 import javax.swing.SwingUtilities;
 
@@ -10,6 +11,14 @@ import javax.swing.SwingUtilities;
  * 此类负责在事件调度线程上创建和显示主UI。
  */
 public class Main {
+
+    public static String LOG_FILE_DIR_PATH;
+    public static String LOG_FILE_PATH;
+
+    static {
+        LOG_FILE_DIR_PATH = DateUtils.getNowStr(DateUtils.YYYY_MM_DD)+"/";
+        LOG_FILE_PATH = DateUtils.getNowStr(DateUtils.HHMMSS)+"-";
+    }
 
     /**
  * 启动应用程序的主方法。

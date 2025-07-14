@@ -1,5 +1,6 @@
 package com.migrator.core;
 
+import com.migrator.Main;
 import com.migrator.config.ConfigManager;
 import com.migrator.db.DatabaseController;
 import com.migrator.ui.MigrationUI;
@@ -11,10 +12,13 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.io.IOException;
 import java.sql.*;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
@@ -79,12 +83,20 @@ public class Migrator {
                     String[] patterns = filterText.split(",");
                     for (String pattern : patterns) {
                         try {
-                            Pattern regex = Pattern.compile(pattern.trim(), Pattern.CASE_INSENSITIVE);
+                            boolean useRegex = ui.isRegexFilterEnabled();
                             for (String tableName : allTableNames) {
-                                if (regex.matcher(tableName).find()) {
-                                    selectedTables.add(tableName);
+                                if (useRegex) {
+                                    Pattern regex = Pattern.compile(pattern.trim(), Pattern.CASE_INSENSITIVE);
+                                    if (regex.matcher(tableName).find()) {
+                                        selectedTables.add(tableName);
+                                    }
+                                } else {
+                                    if (tableName.equalsIgnoreCase(pattern.trim())) {
+                                        selectedTables.add(tableName);
+                                    }
                                 }
                             }
+
                         } catch (PatternSyntaxException e) {
                             publish("⚠️ 无效的正则表达式: " + pattern + ", 已忽略。");
                         }
@@ -138,11 +150,11 @@ public class Migrator {
                                 String createSQL = generateCreateTableSQL(oracleConn, tableName, oracleUser);
                                 try {
                                     stmt.execute(createSQL);
-                                    SQLFileUtil.successSql(createSQL, configManager.getProperty("file.success", "log/success.sql"));
+                                    SQLFileUtil.successSql(createSQL, configManager.getProperty("file.log", "log/")+Main.LOG_FILE_DIR_PATH+Main.LOG_FILE_PATH+"success.sql");
                                     publish("    - ✅ 表结构创建成功: " + tableName);
                                 } catch (SQLException e) {
                                     publish("    - ❌ 表结构创建失败: " + e.getMessage());
-                                    SQLFileUtil.errorSql(createSQL, configManager.getProperty("file.error", "log/error.sql"));
+                                    SQLFileUtil.errorSql(createSQL, configManager.getProperty("file.log", "log/")+Main.LOG_FILE_DIR_PATH+Main.LOG_FILE_PATH+"error.sql");
                                     // 如果结构迁移失败则继续下一个表
                                     mysqlConn.rollback();
                                     continue;
@@ -372,10 +384,113 @@ public class Migrator {
         }
 
         sb.append(") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        // 拼接表注释（先保留 comment 内容）
+        String tableCommentClause = "";
         if (tableComment != null && !tableComment.isEmpty()) {
-            sb.append(" COMMENT='").append(tableComment.replace("'", "\\'")).append("'");
+            tableCommentClause = " COMMENT='" + tableComment.replace("'", "\\'") + "'";
         }
-        sb.append(";");
+        // 检查是否是分区表，生成 MySQL 分区语法（目前只处理 RANGE 分区示例）
+        // 检查是否是分区表，生成 MySQL 分区语法（目前只处理 RANGE 分区示例）
+        String partitioningSql = "SELECT PARTITIONING_TYPE FROM ALL_PART_TABLES WHERE OWNER = ? AND TABLE_NAME = ?";
+        try (PreparedStatement ps = oracleConn.prepareStatement(partitioningSql)) {
+            ps.setString(1, owner);
+            ps.setString(2, tableName);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    String partitionType = rs.getString("PARTITIONING_TYPE");
+                    if ("RANGE".equalsIgnoreCase(partitionType)) {
+                        // 尝试获取分区键
+                        String keySql = "SELECT COLUMN_NAME FROM ALL_PART_KEY_COLUMNS WHERE OWNER = ? AND NAME = ? ORDER BY COLUMN_POSITION";
+                        List<String> partitionCols = new ArrayList<>();
+                        try (PreparedStatement keyPs = oracleConn.prepareStatement(keySql)) {
+                            keyPs.setString(1, owner);
+                            keyPs.setString(2, tableName);
+                            try (ResultSet keyRs = keyPs.executeQuery()) {
+                                while (keyRs.next()) {
+                                    partitionCols.add(keyRs.getString("COLUMN_NAME").toLowerCase());
+                                }
+                            }
+                        }
+
+                        // 检查分区字段类型是否为整数
+                        boolean isIntegerPartition = false;
+                        if (!partitionCols.isEmpty()) {
+                            String columnTypeSql = "SELECT DATA_TYPE FROM ALL_TAB_COLUMNS WHERE OWNER = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?";
+                            try (PreparedStatement typePs = oracleConn.prepareStatement(columnTypeSql)) {
+                                typePs.setString(1, owner);
+                                typePs.setString(2, tableName);
+                                typePs.setString(3, partitionCols.get(0).toUpperCase());
+                                try (ResultSet rsType = typePs.executeQuery()) {
+                                    if (rsType.next()) {
+                                        String partitionColumnType = rsType.getString("DATA_TYPE");
+                                        if ("NUMBER".equalsIgnoreCase(partitionColumnType)) {
+                                            isIntegerPartition = true;
+                                        } else {
+                                            log("⚠️ 表 " + tableName + " 的分区列类型为 " + partitionColumnType + "，MySQL 不支持该类型做分区。分区定义将被跳过。");
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if (isIntegerPartition) {
+                            // 获取分区定义
+                            String partSql = "SELECT PARTITION_NAME, HIGH_VALUE FROM ALL_TAB_PARTITIONS WHERE TABLE_OWNER = ? AND TABLE_NAME = ? ORDER BY PARTITION_POSITION";
+                            List<String> partitionDefs = new ArrayList<>();
+                            try (PreparedStatement partPs = oracleConn.prepareStatement(partSql)) {
+                                partPs.setString(1, owner);
+                                partPs.setString(2, tableName);
+                                try (ResultSet partRs = partPs.executeQuery()) {
+                                    while (partRs.next()) {
+                                        String partitionName = partRs.getString("PARTITION_NAME").toLowerCase();
+                                        String highValue = partRs.getString("HIGH_VALUE").trim();
+
+                                        // 解析 TO_DATE 表达式
+                                        if (highValue.contains("TO_DATE")) {
+                                            Pattern datePattern = Pattern.compile("TO_DATE\\s*\\(\\s*'(.*?)'", Pattern.CASE_INSENSITIVE);
+                                            Matcher matcher = datePattern.matcher(highValue);
+                                            if (matcher.find()) {
+                                                String dateStr = matcher.group(1);
+                                                try {
+                                                    // 尝试将日期转为整数格式 yyyyMMdd
+                                                    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd[ HH:mm:ss]");
+                                                    LocalDateTime dt = LocalDateTime.parse(dateStr, formatter);
+                                                    highValue = String.valueOf(Integer.parseInt(dt.format(DateTimeFormatter.ofPattern("yyyyMMdd"))));
+                                                } catch (Exception ex) {
+                                                    log("⚠️ 分区值日期解析失败，默认使用 MAXVALUE");
+                                                    highValue = "MAXVALUE";
+                                                }
+                                            } else {
+                                                highValue = "MAXVALUE";
+                                            }
+                                        }
+
+                                        if ("MAXVALUE".equalsIgnoreCase(highValue)) {
+                                            partitionDefs.add(String.format("PARTITION %s VALUES LESS THAN (MAXVALUE)", partitionName));
+                                        } else {
+                                            partitionDefs.add(String.format("PARTITION %s VALUES LESS THAN (%s)", partitionName, highValue));
+                                        }
+                                    }
+                                }
+                            }
+
+                            // 拼接 MySQL 分区语法
+                            if (!partitionDefs.isEmpty()) {
+                                sb.append("\nPARTITION BY RANGE (").append(partitionCols.get(0)).append(") (\n  ");
+                                sb.append(String.join(",\n  ", partitionDefs));
+                                sb.append("\n)");
+                                log("    - ✅ 表 " + tableName + " 的分区定义已成功迁移到 MySQL。");
+                            }
+                        }
+                    } else {
+                        log("⚠️ 不支持的 Oracle 分区类型: " + partitionType + "，分区定义将被跳过。");
+                    }
+                }
+            }
+        }
+
+        // 最后再拼接分号
+        sb.append(tableCommentClause);
 
         return sb.toString();
     }
@@ -416,10 +531,10 @@ public class Migrator {
                     try (Statement mysqlStmt = mysqlConn.createStatement()) {
                         mysqlStmt.execute(alterSql);
                         log("    - ✅ 外键创建成功: " + constraintName);
-                        SQLFileUtil.successSql(alterSql, configManager.getProperty("file.success", "log/success.sql"));
+                        SQLFileUtil.successSql(alterSql, configManager.getProperty("file.log", "log/")+Main.LOG_FILE_DIR_PATH+Main.LOG_FILE_PATH+"success.sql");
                     } catch (SQLException e) {
                         log("    - ⚠️ 外键创建失败: " + constraintName + " - " + e.getMessage());
-                        SQLFileUtil.errorSql(alterSql, configManager.getProperty("file.error", "log/error.sql"));
+                        SQLFileUtil.errorSql(alterSql, configManager.getProperty("file.log", "log/")+Main.LOG_FILE_DIR_PATH+Main.LOG_FILE_PATH+"error.sql");
                     }
                 }
             }

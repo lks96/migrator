@@ -8,6 +8,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.Properties;
 
 /**
@@ -21,16 +22,16 @@ public class ConfigManager {
     private static final String CONFIG_FILE_PATH = "app/conf/migrator.properties";
 
     /**
- * ConfigManager的构造方法。
- * @param logArea 用于追加日志消息的JTextArea。
- */
+     * ConfigManager的构造方法。
+     * @param logArea 用于追加日志消息的JTextArea。
+     */
     public ConfigManager(JTextArea logArea) {
         this.logArea = logArea;
     }
 
     /**
- * 从外部.properties文件加载配置。
- */
+     * 从外部.properties文件加载配置。
+     */
     public void loadExternalConfig() {
         File configFile = new File(CONFIG_FILE_PATH);
         if (!configFile.exists()) {
@@ -47,9 +48,9 @@ public class ConfigManager {
     }
 
     /**
- * 将当前UI配置保存到.properties文件。
- * @param ui 从中获取配置值的主UI框架。
- */
+     * 将当前UI配置保存到.properties文件。
+     * @param ui 从中获取配置值的主UI框架。
+     */
     public void saveCurrentConfig(MigrationUI ui) {
         // Oracle配置
         config.setProperty("oracle.host", ui.getOracleHostField().getText());
@@ -94,16 +95,37 @@ public class ConfigManager {
         }
 
         // SQL日志文件路径
-        if (config.getProperty("file.error") == null) {
-            config.setProperty("file.error", "log/error.sql");
-        }
-        if (config.getProperty("file.success") == null) {
-            config.setProperty("file.success", "log/success.sql");
+        if (config.getProperty("file.log") == null) {
+            config.setProperty("file.log", "log/");
         }
 
+        try (PrintWriter writer = new PrintWriter(new FileOutputStream(CONFIG_FILE_PATH))) {
+            writer.println("# Database Migration Tool Configuration");
+            writer.println();
 
-        try (FileOutputStream fos = new FileOutputStream(CONFIG_FILE_PATH)) {
-            config.store(fos, "Database Migration Tool Configuration");
+            // 分组写入配置
+            writeGroup(writer, "Oracle Configuration", new String[]{
+                    "oracle.host", "oracle.port", "oracle.sid", "oracle.user", "oracle.password", "oracle.connectMode"
+            });
+            writer.println();
+
+            writeGroup(writer, "MySQL Configuration", new String[]{
+                    "mysql.host", "mysql.port", "mysql.dbname", "mysql.user", "mysql.password"
+            });
+            writer.println();
+
+            writeGroup(writer, "Type Mapping Configuration", getMappingKeys());
+            writer.println();
+
+            writeGroup(writer, "Other Migration Configuration", new String[]{
+                    "migrate.dropOldTable", "migrate.foreignKeys"
+            });
+            writer.println();
+
+            writeGroup(writer, "Icon and Log Configuration", new String[]{
+                    "icon.path", "file.log"
+            });
+
             log("✅ 已保存当前配置到 " + CONFIG_FILE_PATH);
         } catch (IOException e) {
             log("❌ 配置保存失败: " + e.getMessage());
@@ -111,9 +133,41 @@ public class ConfigManager {
     }
 
     /**
- * 将加载的配置应用到UI组件。
- * @param ui 将应用配置的主UI框架。
- */
+     * 将一组配置属性写入文件
+     * @param writer 输出流
+     * @param groupName 组名
+     * @param keys 属性键数组
+     */
+    private void writeGroup(PrintWriter writer, String groupName, String[] keys) {
+        writer.println("# " + groupName);
+        for (String key : keys) {
+            String value = config.getProperty(key);
+            if (value != null) {
+                writer.println(key + "=" + value);
+            }
+        }
+    }
+
+    /**
+     * 获取类型映射的键数组
+     * @return 键数组
+     */
+    private String[] getMappingKeys() {
+        java.util.List<String> mappingKeys = new java.util.ArrayList<>();
+        int i = 0;
+        while (true) {
+            String key = "mapping." + i;
+            if (config.getProperty(key) == null) break;
+            mappingKeys.add(key);
+            i++;
+        }
+        return mappingKeys.toArray(new String[0]);
+    }
+
+    /**
+     * 将加载的配置应用到UI组件。
+     * @param ui 将应用配置的主UI框架。
+     */
     public void applyConfigToUI(MigrationUI ui) {
         // 应用Oracle字段
         ui.getOracleHostField().setText(config.getProperty("oracle.host", "127.0.0.1"));
@@ -157,28 +211,28 @@ public class ConfigManager {
     }
 
     /**
- * 通过键检索配置属性。
- * @param key 属性键。
- * @return 属性值，如果未找到则为null。
- */
+     * 通过键检索配置属性。
+     * @param key 属性键。
+     * @return 属性值，如果未找到则为null。
+     */
     public String getProperty(String key) {
         return config.getProperty(key);
     }
 
     /**
- * 通过键检索配置属性，带有默认值。
- * @param key 属性键。
- * @param defaultValue 如果未找到键则返回的值。
- * @return 属性值。
- */
+     * 通过键检索配置属性，带有默认值。
+     * @param key 属性键。
+     * @param defaultValue 如果未找到键则返回的值。
+     * @return 属性值。
+     */
     public String getProperty(String key, String defaultValue) {
         return config.getProperty(key, defaultValue);
     }
 
     /**
- * 将消息记录到UI的日志区域。
- * @param msg 要记录的消息。
- */
+     * 将消息记录到UI的日志区域。
+     * @param msg 要记录的消息。
+     */
     private void log(String msg) {
         if (logArea != null) {
             logArea.append(msg + "\n");
