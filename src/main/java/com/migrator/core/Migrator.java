@@ -551,18 +551,70 @@ public class Migrator {
      * @param scale The scale for numeric types.
      * @return The corresponding MySQL data type string.
      */
+    /**
+     * Maps an Oracle data type to its corresponding MySQL data type.
+     * @param oracleType The Oracle data type string.
+     * @param length The length of the data type.
+     * @param precision The precision for numeric types.
+     * @param scale The scale for numeric types.
+     * @return The corresponding MySQL data type string.
+     */
     private String mapOracleTypeToMySQL(String oracleType, int length, int precision, int scale) {
         String oracleTypeUpper = oracleType.toUpperCase();
         DefaultTableModel mappingModel = ui.getMappingTableModel();
 
-        // 首先检查自定义映射
+        // --- 开始修改 ---
+
+        // 1. 根据不同类型，构造一个带长度/精度的完整Oracle类型字符串，用于精确匹配
+        String fullOracleType;
+        switch (oracleTypeUpper) {
+            case "VARCHAR2":
+            case "NVARCHAR2":
+            case "VARCHAR":
+            case "CHAR":
+            case "NCHAR":
+            case "RAW":
+                fullOracleType = oracleTypeUpper + "(" + length + ")";
+                break;
+            case "NUMBER":
+                if (scale > 0 && precision > 0) {
+                    fullOracleType = "NUMBER(" + precision + "," + scale + ")";
+                } else if (precision > 0) {
+                    fullOracleType = "NUMBER(" + precision + ")";
+                } else {
+                    fullOracleType = "NUMBER";
+                }
+                break;
+            default:
+                // 对于TIMESTAMP, DATE, CLOB等不带括号的类型，其本身就是完整类型
+                fullOracleType = oracleTypeUpper;
+                break;
+        }
+
+        // 2. 优先在自定义映射中查找精确匹配
+        //    例如，这会查找 "VARCHAR2(255)"
         for (int i = 0; i < mappingModel.getRowCount(); i++) {
-            if (oracleTypeUpper.equalsIgnoreCase((String) mappingModel.getValueAt(i, 0))) {
+            String mappingKey = ((String) mappingModel.getValueAt(i, 0)).toUpperCase().replaceAll("\\s", "");
+            if (mappingKey.equalsIgnoreCase(fullOracleType)) {
                 return (String) mappingModel.getValueAt(i, 1);
             }
         }
 
-        // 处理复杂类型如TIMESTAMP(6)
+        // 3. 如果找不到精确匹配，再查找通用类型匹配
+        //    例如，这会查找 "DATE" 或 "CLOB"
+        //    这确保了 VARCHAR2(255) 的规则不会被一个( hypothetical) 通用的 VARCHAR2 规则错误覆盖
+        if (!fullOracleType.equals(oracleTypeUpper)) {
+            for (int i = 0; i < mappingModel.getRowCount(); i++) {
+                String mappingKey = ((String) mappingModel.getValueAt(i, 0)).toUpperCase().replaceAll("\\s", "");
+                if (mappingKey.equalsIgnoreCase(oracleTypeUpper)) {
+                    return (String) mappingModel.getValueAt(i, 1);
+                }
+            }
+        }
+
+        // --- 结束修改 ---
+
+        // 4. 如果自定义映射中没有找到任何匹配项，则执行默认的转换逻辑
         if (oracleTypeUpper.startsWith("TIMESTAMP")) {
             return "DATETIME(6)";
         }
