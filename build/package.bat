@@ -32,8 +32,7 @@ jpackage ^
     --main-class com.migrator.Main ^
     --icon "%PROJECT_ROOT%\build\migrator.ico" ^
     --java-options "-Dfile.encoding=UTF-8" ^
-    --dest "%OUTPUT_DIR%" ^
-    --win-console
+    --dest "%OUTPUT_DIR%"
 if errorlevel 1 (
     echo "failed!"
     goto :END
