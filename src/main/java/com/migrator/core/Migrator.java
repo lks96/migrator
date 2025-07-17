@@ -34,6 +34,8 @@ public class Migrator {
     private final MigrationUI ui;
     private final JTextArea logArea;
 
+    public static final Set<String> tables = new HashSet<>();
+
     /**
  * Migrator的构造方法。
  * @param dbController 用于获取连接的数据库控制器。
@@ -131,9 +133,12 @@ public class Migrator {
                 int totalTables = selectedTables.size();
                 int tableIndex = 0;
                 for (String tableName : selectedTables) {
+                    if(tables.contains(tableName)) {
+                        publish("    - 重复迁移已跳过...");
+                        continue;
+                    }
                     tableIndex++;
                     publish("\n--- (" + tableIndex + "/" + totalTables + ") 开始处理表: " + tableName + " ---");
-
                     try {
                         mysqlConn.setAutoCommit(false);
 
@@ -184,7 +189,7 @@ public class Migrator {
 
                         mysqlConn.commit();
                         publish("    - ✅ 已提交事务: " + tableName);
-
+                        tables.add(tableName);
                     } catch (Exception ex) {
                         publish("❌ 处理表 " + tableName + " 时发生严重错误: " + ex.getMessage());
                         ex.printStackTrace();
